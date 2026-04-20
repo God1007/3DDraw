@@ -43,6 +43,17 @@ function createStrokeFixture(id: string, color = '#ef476f'): CrayonStroke {
 }
 
 describe('history helpers', () => {
+  it('exposes only past present and future on history state', () => {
+    const history = createHistoryState({
+      primitives: [],
+      strokes: [],
+      selectionId: null,
+    });
+
+    expect(Object.keys(history).sort()).toEqual(['future', 'past', 'present']);
+    expect('committed' in history).toBe(false);
+  });
+
   it('undoes and redoes serializable scene snapshots', () => {
     const initial = { primitives: [], strokes: [], selectionId: null };
     const afterAdd = { primitives: [{ id: 'a' }], strokes: [], selectionId: 'a' };

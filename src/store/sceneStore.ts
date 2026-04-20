@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { createPrimitive } from '../features/primitives/createPrimitive';
 import { buildInitialSnapshot } from './defaultScene';
-import { createHistoryState, pushHistory, redoHistory, undoHistory, type HistoryState } from './history';
+import { createHistoryState, redoHistory, undoHistory, type HistoryState } from './history';
 import type {
   BrushSettings,
   CrayonStroke,
@@ -52,15 +52,56 @@ function findStroke(snapshot: SceneSnapshot, id: string): CrayonStroke | undefin
   return snapshot.strokes.find((stroke) => stroke.id === id);
 }
 
+const committedBaselines = new WeakMap<HistoryState<SceneSnapshot>, SceneSnapshot>();
+
+function cloneSnapshot(snapshot: SceneSnapshot): SceneSnapshot {
+  return structuredClone(snapshot);
+}
+
+function setCommittedBaseline(history: HistoryState<SceneSnapshot>, baseline: SceneSnapshot): HistoryState<SceneSnapshot> {
+  committedBaselines.set(history, cloneSnapshot(baseline));
+  return history;
+}
+
+function getCommittedBaseline(history: HistoryState<SceneSnapshot>): SceneSnapshot {
+  return committedBaselines.get(history) ?? history.present;
+}
+
+function createTrackedHistory(snapshot: SceneSnapshot): HistoryState<SceneSnapshot> {
+  return setCommittedBaseline(createHistoryState(snapshot), snapshot);
+}
+
+function carryCommittedBaseline(
+  source: HistoryState<SceneSnapshot>,
+  target: HistoryState<SceneSnapshot>
+): HistoryState<SceneSnapshot> {
+  return setCommittedBaseline(target, getCommittedBaseline(source));
+}
+
+function commitHistory(
+  history: HistoryState<SceneSnapshot>,
+  next: SceneSnapshot
+): HistoryState<SceneSnapshot> {
+  const past = [...history.past, cloneSnapshot(getCommittedBaseline(history))];
+  return setCommittedBaseline(
+    {
+      past,
+      present: cloneSnapshot(next),
+      future: [],
+    },
+    next
+  );
+}
+
 export const useSceneStore = create<SceneStoreState>((set) => ({
-  history: createHistoryState(buildInitialSnapshot()),
+  history: createTrackedHistory(buildInitialSnapshot()),
 
   setTool: (tool) => {
     set((state) => ({
-      history: {
+      history: carryCommittedBaseline(state.history, {
         ...state.history,
         present: setSnapshotField(state.history.present, { activeTool: tool }),
-      },
+      }),
     }));
   },
 
@@ -71,16 +112,16 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
 
       if (!selectionId) {
         return {
-          history: {
+          history: carryCommittedBaseline(history, {
             ...history,
             present: setSnapshotField(history.present, { activeColor: color }),
-          },
+          }),
         };
       }
 
       if (findPrimitive(history.present, selectionId)) {
         return {
-          history: pushHistory(history, {
+          history: commitHistory(history, {
             ...history.present,
             activeColor: color,
             primitives: history.present.primitives.map((primitive) =>
@@ -92,7 +133,7 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
 
       if (findStroke(history.present, selectionId)) {
         return {
-          history: pushHistory(history, {
+          history: commitHistory(history, {
             ...history.present,
             activeColor: color,
             strokes: history.present.strokes.map((stroke) =>
@@ -113,19 +154,19 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
 
   setTransformMode: (mode) => {
     set((state) => ({
-      history: {
+      history: carryCommittedBaseline(state.history, {
         ...state.history,
         present: setSnapshotField(state.history.present, { transformMode: mode }),
-      },
+      }),
     }));
   },
 
   selectEntity: (id) => {
     set((state) => ({
-      history: {
+      history: carryCommittedBaseline(state.history, {
         ...state.history,
         present: setSnapshotField(state.history.present, { selectionId: id }),
-      },
+      }),
     }));
   },
 
@@ -139,7 +180,7 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
         activeTool: 'transform',
       };
 
-      return { history: pushHistory(state.history, snapshot) };
+      return { history: commitHistory(state.history, snapshot) };
     });
   },
 
@@ -166,12 +207,12 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
       };
 
       return commit
-        ? { history: pushHistory(history, nextSnapshot) }
+        ? { history: commitHistory(history, nextSnapshot) }
         : {
-            history: {
+            history: carryCommittedBaseline(history, {
               ...history,
               present: nextSnapshot,
-            },
+            }),
           };
     });
   },
@@ -179,17 +220,19 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
   replaceSnapshot: (snapshot, commit = false) => {
     set((state) => ({
       history: commit
-        ? pushHistory(state.history, snapshot)
+        ? commitHistory(state.history, snapshot)
         : {
-            ...state.history,
-            present: structuredClone(snapshot),
+            ...carryCommittedBaseline(state.history, {
+              ...state.history,
+              present: structuredClone(snapshot),
+            }),
           },
     }));
   },
 
   updateLights: (update) => {
     set((state) => ({
-      history: {
+      history: carryCommittedBaseline(state.history, {
         ...state.history,
         present: {
           ...state.history.present,
@@ -198,13 +241,13 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
             ...update,
           },
         },
-      },
+      }),
     }));
   },
 
   updateBrush: (update) => {
     set((state) => ({
-      history: {
+      history: carryCommittedBaseline(state.history, {
         ...state.history,
         present: {
           ...state.history.present,
@@ -213,7 +256,7 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
             ...update,
           },
         },
-      },
+      }),
     }));
   },
 
@@ -234,7 +277,7 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
       }
 
       return {
-        history: pushHistory(history, {
+        history: commitHistory(history, {
           ...history.present,
           primitives: history.present.primitives.filter((primitive) => primitive.id !== selectionId),
           strokes: history.present.strokes.filter((stroke) => stroke.id !== selectionId),
@@ -246,19 +289,25 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
 
   resetScene: () => {
     set((state) => ({
-      history: pushHistory(state.history, buildInitialSnapshot()),
+      history: commitHistory(state.history, buildInitialSnapshot()),
     }));
   },
 
   undo: () => {
     set((state) => ({
-      history: undoHistory(state.history),
+      history: (() => {
+        const nextHistory = undoHistory(state.history);
+        return setCommittedBaseline(nextHistory, nextHistory.present);
+      })(),
     }));
   },
 
   redo: () => {
     set((state) => ({
-      history: redoHistory(state.history),
+      history: (() => {
+        const nextHistory = redoHistory(state.history);
+        return setCommittedBaseline(nextHistory, nextHistory.present);
+      })(),
     }));
   },
 }));
