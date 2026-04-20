@@ -32,7 +32,7 @@ export interface PrimitiveObject {
 
 export interface StrokeSegment {
   center: Vec3;
-  rotation: Vec3;
+  rotation: [number, number, number, number];
   radius: number;
   length: number;
 }

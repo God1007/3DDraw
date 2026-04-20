@@ -176,7 +176,7 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
     });
   },
 
-  replaceSnapshot: (snapshot, commit = true) => {
+  replaceSnapshot: (snapshot, commit = false) => {
     set((state) => ({
       history: commit
         ? pushHistory(state.history, snapshot)
@@ -189,25 +189,31 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
 
   updateLights: (update) => {
     set((state) => ({
-      history: pushHistory(state.history, {
-        ...state.history.present,
-        lights: {
-          ...state.history.present.lights,
-          ...update,
+      history: {
+        ...state.history,
+        present: {
+          ...state.history.present,
+          lights: {
+            ...state.history.present.lights,
+            ...update,
+          },
         },
-      }),
+      },
     }));
   },
 
   updateBrush: (update) => {
     set((state) => ({
-      history: pushHistory(state.history, {
-        ...state.history.present,
-        brush: {
-          ...state.history.present.brush,
-          ...update,
+      history: {
+        ...state.history,
+        present: {
+          ...state.history.present,
+          brush: {
+            ...state.history.present.brush,
+            ...update,
+          },
         },
-      }),
+      },
     }));
   },
 

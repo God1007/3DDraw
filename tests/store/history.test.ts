@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { createHistoryState, pushHistory, redoHistory, undoHistory } from '../../src/store/history';
 import { createDefaultSceneSnapshot } from '../../src/store/defaultScene';
 import { useSceneStore } from '../../src/store/sceneStore';
-import type { PrimitiveObject } from '../../src/types/scene';
+import type { PrimitiveObject, StrokeSegment } from '../../src/types/scene';
+import { CRAYON_COLORS } from '../../src/constants/palette';
+import { TOOL_OPTIONS, TRANSFORM_MODES } from '../../src/constants/tools';
 
 describe('history helpers', () => {
   it('undoes and redoes serializable scene snapshots', () => {
@@ -87,5 +89,65 @@ describe('scene store history behavior', () => {
     expect(nextHistory.present.primitives[0]?.position).toEqual([2, 3, 4]);
     expect(nextHistory.present.primitives[0]?.rotation).toEqual([0, 0, 0]);
     expect(nextHistory.present.primitives[0]?.scale).toEqual([1, 1, 1]);
+  });
+
+  it('updates lights and brush without pushing history', () => {
+    const initial = createDefaultSceneSnapshot();
+    const history = pushHistory(createHistoryState(initial), {
+      ...initial,
+      selectionId: 'selected',
+    });
+
+    useSceneStore.setState({ history });
+
+    useSceneStore.getState().updateLights({ ambientIntensity: 0.8 });
+    useSceneStore.getState().updateBrush({ deformStrength: 0.25 });
+
+    const nextHistory = useSceneStore.getState().history;
+    expect(nextHistory.past).toEqual(history.past);
+    expect(nextHistory.future).toEqual(history.future);
+    expect(nextHistory.present.lights.ambientIntensity).toBe(0.8);
+    expect(nextHistory.present.brush.deformStrength).toBe(0.25);
+  });
+
+  it('replaceSnapshot defaults to a present-only update', () => {
+    const initial = createDefaultSceneSnapshot();
+    const history = pushHistory(createHistoryState(initial), {
+      ...initial,
+      selectionId: 'selected',
+    });
+    const replacement = {
+      ...initial,
+      selectionId: 'replacement',
+    };
+
+    useSceneStore.setState({ history });
+
+    useSceneStore.getState().replaceSnapshot(replacement);
+
+    const nextHistory = useSceneStore.getState().history;
+    expect(nextHistory.past).toEqual(history.past);
+    expect(nextHistory.future).toEqual(history.future);
+    expect(nextHistory.present).toEqual(replacement);
+  });
+});
+
+describe('scene constants', () => {
+  it('exports the expected crayon colors and tool labels', () => {
+    expect(CRAYON_COLORS).toHaveLength(12);
+    expect(CRAYON_COLORS[0]).toEqual({ name: 'Red', value: '#ef476f' });
+    expect(TOOL_OPTIONS.find((tool) => tool.value === 'transform')?.label).toBe('Move');
+    expect(TRANSFORM_MODES.map((mode) => mode.label)).toEqual(['translate', 'rotate', 'scale']);
+  });
+
+  it('uses quaternion rotations for stroke segments', () => {
+    const segment: StrokeSegment = {
+      center: [0, 0, 0],
+      rotation: [0, 0, 0, 1],
+      radius: 0.25,
+      length: 1,
+    };
+
+    expect(segment.rotation).toHaveLength(4);
   });
 });

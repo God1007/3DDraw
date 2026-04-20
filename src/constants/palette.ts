@@ -1,4 +1,4 @@
-export const PALETTE = [
+export const CRAYON_COLORS = [
   { name: 'Red', value: '#ef476f' },
   { name: 'Orange', value: '#f78c35' },
   { name: 'Yellow', value: '#ffd166' },
@@ -13,4 +13,4 @@ export const PALETTE = [
   { name: 'Black', value: '#2d2a32' },
 ] as const;
 
-export const DEFAULT_COLOR = PALETTE[0].value;
+export const DEFAULT_COLOR = CRAYON_COLORS[0].value;
