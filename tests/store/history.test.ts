@@ -97,6 +97,47 @@ describe('scene store history behavior', () => {
     expect(nextHistory.past).toHaveLength(0);
   });
 
+  it('keeps updateLights in the baseline for the next committed undo step', () => {
+    useSceneStore.setState({ history: createHistoryState(buildInitialSnapshot()) });
+
+    useSceneStore.getState().updateLights({ ambientIntensity: 0.8 });
+    useSceneStore.getState().resetScene();
+    useSceneStore.getState().undo();
+
+    const nextHistory = useSceneStore.getState().history;
+    expect(nextHistory.present.lights.ambientIntensity).toBe(0.8);
+  });
+
+  it('keeps unselected setColor in the baseline for the next committed undo step', () => {
+    useSceneStore.setState({ history: createHistoryState(buildInitialSnapshot()) });
+
+    useSceneStore.getState().setColor('#3a86ff');
+    useSceneStore.getState().addPrimitive('cube');
+    useSceneStore.getState().undo();
+
+    const nextHistory = useSceneStore.getState().history;
+    expect(nextHistory.present.activeColor).toBe('#3a86ff');
+    expect(nextHistory.present.primitives).toHaveLength(0);
+  });
+
+  it('keeps stale-selection setColor in the baseline for the next committed undo step', () => {
+    useSceneStore.setState({
+      history: createHistoryState({
+        ...buildInitialSnapshot(),
+        selectionId: 'ghost-selection',
+      }),
+    });
+
+    useSceneStore.getState().setColor('#8e6ad8');
+    useSceneStore.getState().addPrimitive('cube');
+    useSceneStore.getState().undo();
+
+    const nextHistory = useSceneStore.getState().history;
+    expect(nextHistory.present.activeColor).toBe('#8e6ad8');
+    expect(nextHistory.present.selectionId).toBe('ghost-selection');
+    expect(nextHistory.present.primitives).toHaveLength(0);
+  });
+
   it('supports addPrimitive followed by undo and redo', () => {
     useSceneStore.setState({ history: createHistoryState(buildInitialSnapshot()) });
 

@@ -78,6 +78,12 @@ function carryCommittedBaseline(
   return setCommittedBaseline(target, getCommittedBaseline(source));
 }
 
+function syncCommittedBaseline(
+  target: HistoryState<SceneSnapshot>
+): HistoryState<SceneSnapshot> {
+  return setCommittedBaseline(target, target.present);
+}
+
 function commitHistory(
   history: HistoryState<SceneSnapshot>,
   next: SceneSnapshot
@@ -98,7 +104,7 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
 
   setTool: (tool) => {
     set((state) => ({
-      history: carryCommittedBaseline(state.history, {
+      history: syncCommittedBaseline({
         ...state.history,
         present: setSnapshotField(state.history.present, { activeTool: tool }),
       }),
@@ -112,7 +118,7 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
 
       if (!selectionId) {
         return {
-          history: carryCommittedBaseline(history, {
+          history: syncCommittedBaseline({
             ...history,
             present: setSnapshotField(history.present, { activeColor: color }),
           }),
@@ -144,17 +150,17 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
       }
 
       return {
-        history: {
+        history: syncCommittedBaseline({
           ...history,
           present: setSnapshotField(history.present, { activeColor: color }),
-        },
+        }),
       };
     });
   },
 
   setTransformMode: (mode) => {
     set((state) => ({
-      history: carryCommittedBaseline(state.history, {
+      history: syncCommittedBaseline({
         ...state.history,
         present: setSnapshotField(state.history.present, { transformMode: mode }),
       }),
@@ -163,7 +169,7 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
 
   selectEntity: (id) => {
     set((state) => ({
-      history: carryCommittedBaseline(state.history, {
+      history: syncCommittedBaseline({
         ...state.history,
         present: setSnapshotField(state.history.present, { selectionId: id }),
       }),
@@ -221,18 +227,16 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
     set((state) => ({
       history: commit
         ? commitHistory(state.history, snapshot)
-        : {
-            ...carryCommittedBaseline(state.history, {
-              ...state.history,
-              present: structuredClone(snapshot),
-            }),
-          },
+        : syncCommittedBaseline({
+            ...state.history,
+            present: structuredClone(snapshot),
+          }),
     }));
   },
 
   updateLights: (update) => {
     set((state) => ({
-      history: carryCommittedBaseline(state.history, {
+      history: syncCommittedBaseline({
         ...state.history,
         present: {
           ...state.history.present,
@@ -247,7 +251,7 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
 
   updateBrush: (update) => {
     set((state) => ({
-      history: carryCommittedBaseline(state.history, {
+      history: syncCommittedBaseline({
         ...state.history,
         present: {
           ...state.history.present,
