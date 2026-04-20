@@ -1,0 +1,47 @@
+:root {
+  color-scheme: light;
+  font-family: "Trebuchet MS", "Comic Sans MS", sans-serif;
+  background: #f6ead4;
+  color: #3a2e28;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+  height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(circle at top, #fff7eb 0%, #f6ead4 55%, #ecd7b6 100%);
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  padding: 24px;
+  border-right: 3px solid rgba(92, 64, 51, 0.12);
+  background: rgba(255, 248, 236, 0.88);
+  backdrop-filter: blur(12px);
+}
+
+.workspace {
+  padding: 24px;
+}
+
+.workspace-placeholder {
+  height: calc(100vh - 48px);
+  border-radius: 28px;
+  border: 3px dashed rgba(92, 64, 51, 0.24);
+  background: rgba(255, 255, 255, 0.32);
+}
