@@ -10,6 +10,7 @@ import type {
   SceneSnapshot,
   ToolKind,
   TransformMode,
+  Vec3,
 } from '../types/scene';
 
 export interface SceneStoreState {
@@ -21,7 +22,7 @@ export interface SceneStoreState {
   addPrimitive: (kind: PrimitiveObject['type']) => void;
   updateSelectionTransform: (
     id: string,
-    transform: { position: PrimitiveObject['position']; rotation: PrimitiveObject['rotation']; scale: PrimitiveObject['scale'] },
+    transform: { position: Vec3; rotation: Vec3; scale: Vec3 },
     commit?: boolean
   ) => void;
   replaceSnapshot: (snapshot: SceneSnapshot, commit?: boolean) => void;
