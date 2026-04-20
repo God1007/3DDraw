@@ -23,7 +23,7 @@ const DEFAULT_BRUSH: BrushSettings = {
   drawingPlaneMode: 'camera',
 };
 
-export function createDefaultSceneSnapshot(): SceneSnapshot {
+export function buildInitialSnapshot(): SceneSnapshot {
   const activeTool: ToolKind = 'select';
   const transformMode: TransformMode = 'translate';
 
@@ -39,4 +39,4 @@ export function createDefaultSceneSnapshot(): SceneSnapshot {
   };
 }
 
-export const DEFAULT_SCENE = createDefaultSceneSnapshot();
+export const DEFAULT_SCENE = buildInitialSnapshot();

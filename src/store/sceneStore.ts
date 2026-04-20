@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { createPrimitive } from '../features/primitives/createPrimitive';
-import { createDefaultSceneSnapshot } from './defaultScene';
+import { buildInitialSnapshot } from './defaultScene';
 import { createHistoryState, pushHistory, redoHistory, undoHistory, type HistoryState } from './history';
 import type {
   BrushSettings,
@@ -21,7 +21,7 @@ export interface SceneStoreState {
   addPrimitive: (kind: PrimitiveObject['type']) => void;
   updateSelectionTransform: (
     id: string,
-    transform: Partial<Pick<PrimitiveObject, 'position' | 'rotation' | 'scale'>>,
+    transform: { position: PrimitiveObject['position']; rotation: PrimitiveObject['rotation']; scale: PrimitiveObject['scale'] },
     commit?: boolean
   ) => void;
   replaceSnapshot: (snapshot: SceneSnapshot, commit?: boolean) => void;
@@ -52,7 +52,7 @@ function findStroke(snapshot: SceneSnapshot, id: string): CrayonStroke | undefin
 }
 
 export const useSceneStore = create<SceneStoreState>((set) => ({
-  history: createHistoryState(createDefaultSceneSnapshot()),
+  history: createHistoryState(buildInitialSnapshot()),
 
   setTool: (tool) => {
     set((state) => ({
@@ -152,10 +152,9 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
 
       const nextPrimitive = {
         ...history.present.primitives[primitiveIndex],
-        ...transform,
-        position: transform.position ?? history.present.primitives[primitiveIndex].position,
-        rotation: transform.rotation ?? history.present.primitives[primitiveIndex].rotation,
-        scale: transform.scale ?? history.present.primitives[primitiveIndex].scale,
+        position: transform.position,
+        rotation: transform.rotation,
+        scale: transform.scale,
       };
 
       const primitives = [...history.present.primitives];
@@ -246,7 +245,7 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
 
   resetScene: () => {
     set((state) => ({
-      history: pushHistory(state.history, createDefaultSceneSnapshot()),
+      history: pushHistory(state.history, buildInitialSnapshot()),
     }));
   },
 
