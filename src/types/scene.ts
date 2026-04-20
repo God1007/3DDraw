@@ -31,9 +31,10 @@ export interface PrimitiveObject {
 }
 
 export interface StrokeSegment {
-  start: Vec3;
-  end: Vec3;
+  center: Vec3;
+  rotation: Vec3;
   radius: number;
+  length: number;
 }
 
 export interface CrayonStroke {

@@ -19,7 +19,11 @@ export interface SceneStoreState {
   setTransformMode: (mode: TransformMode) => void;
   selectEntity: (id: string | null) => void;
   addPrimitive: (kind: PrimitiveObject['type']) => void;
-  updateSelectionTransform: (transform: Partial<Pick<PrimitiveObject, 'position' | 'rotation' | 'scale'>>) => void;
+  updateSelectionTransform: (
+    id: string,
+    transform: Partial<Pick<PrimitiveObject, 'position' | 'rotation' | 'scale'>>,
+    commit?: boolean
+  ) => void;
   replaceSnapshot: (snapshot: SceneSnapshot, commit?: boolean) => void;
   updateLights: (update: Partial<LightSettings>) => void;
   updateBrush: (update: Partial<BrushSettings>) => void;
@@ -138,16 +142,10 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
     });
   },
 
-  updateSelectionTransform: (transform) => {
+  updateSelectionTransform: (id, transform, commit = false) => {
     set((state) => {
       const { history } = state;
-      const { selectionId } = history.present;
-
-      if (!selectionId) {
-        return state;
-      }
-
-      const primitiveIndex = history.present.primitives.findIndex((primitive) => primitive.id === selectionId);
+      const primitiveIndex = history.present.primitives.findIndex((primitive) => primitive.id === id);
       if (primitiveIndex === -1) {
         return state;
       }
@@ -162,19 +160,30 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
 
       const primitives = [...history.present.primitives];
       primitives[primitiveIndex] = nextPrimitive;
-
-      return {
-        history: pushHistory(history, {
-          ...history.present,
-          primitives,
-        }),
+      const nextSnapshot = {
+        ...history.present,
+        primitives,
       };
+
+      return commit
+        ? { history: pushHistory(history, nextSnapshot) }
+        : {
+            history: {
+              ...history,
+              present: nextSnapshot,
+            },
+          };
     });
   },
 
   replaceSnapshot: (snapshot, commit = true) => {
     set((state) => ({
-      history: commit ? pushHistory(state.history, snapshot) : createHistoryState(snapshot),
+      history: commit
+        ? pushHistory(state.history, snapshot)
+        : {
+            ...state.history,
+            present: structuredClone(snapshot),
+          },
     }));
   },
 
