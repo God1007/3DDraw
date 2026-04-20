@@ -6,6 +6,7 @@ import {
   SphereGeometry,
   type BufferGeometry,
 } from 'three';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { EditableGeometryData, PrimitiveKind, PrimitiveObject } from '../../types/scene';
 
 function buildNeighborMap(indices: number[], vertexCount: number): number[][] {
@@ -33,11 +34,16 @@ function buildNeighborMap(indices: number[], vertexCount: number): number[][] {
 
 function toEditableGeometryData(geometry: BufferGeometry): EditableGeometryData {
   const indexedGeometry = geometry.clone();
-  indexedGeometry.computeVertexNormals();
+  indexedGeometry.deleteAttribute('normal');
+  indexedGeometry.deleteAttribute('uv');
+  indexedGeometry.deleteAttribute('color');
+  indexedGeometry.deleteAttribute('tangent');
 
-  const positionAttribute = indexedGeometry.getAttribute('position');
-  const normalAttribute = indexedGeometry.getAttribute('normal');
-  const indexAttribute = indexedGeometry.getIndex();
+  const weldedGeometry = mergeVertices(indexedGeometry);
+  weldedGeometry.computeVertexNormals();
+  const positionAttribute = weldedGeometry.getAttribute('position');
+  const normalAttribute = weldedGeometry.getAttribute('normal');
+  const indexAttribute = weldedGeometry.getIndex();
 
   if (!indexAttribute) {
     throw new Error('Primitive geometry must be indexed.');

@@ -12,4 +12,16 @@ describe('createPrimitive', () => {
     expect(primitive.geometryData.indices.length).toBeGreaterThan(0);
     expect(primitive.geometryData.neighbors.length).toBeGreaterThan(0);
   });
+
+  it('welds duplicate vertices before building editable topology', () => {
+    const primitive = createPrimitive('box', '#f78c35');
+    const positions = primitive.geometryData.positions;
+    const vertexKeys = new Set<string>();
+
+    for (let i = 0; i < positions.length; i += 3) {
+      vertexKeys.add(`${positions[i]},${positions[i + 1]},${positions[i + 2]}`);
+    }
+
+    expect(vertexKeys.size).toBe(positions.length / 3);
+  });
 });
