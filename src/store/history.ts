@@ -16,7 +16,7 @@ export function createHistoryState<T>(present: T): HistoryState<T> {
   };
 }
 
-export function pushHistory<T>(history: HistoryState<any>, next: T): HistoryState<T> {
+export function pushHistory<T>(history: HistoryState<T>, next: T): HistoryState<T> {
   return {
     past: [...history.past, cloneSnapshot(history.present)],
     present: cloneSnapshot(next),

@@ -55,8 +55,14 @@ describe('history helpers', () => {
   });
 
   it('undoes and redoes serializable scene snapshots', () => {
-    const initial = { primitives: [], strokes: [], selectionId: null };
-    const afterAdd = { primitives: [{ id: 'a' }], strokes: [], selectionId: 'a' };
+    type MinimalSnapshot = {
+      primitives: Array<{ id: string }>;
+      strokes: Array<{ id: string }>;
+      selectionId: string | null;
+    };
+
+    const initial: MinimalSnapshot = { primitives: [], strokes: [], selectionId: null };
+    const afterAdd: MinimalSnapshot = { primitives: [{ id: 'a' }], strokes: [], selectionId: 'a' };
 
     const seeded = pushHistory(createHistoryState(initial), afterAdd);
     const undone = undoHistory(seeded);
@@ -149,6 +155,21 @@ describe('scene store history behavior', () => {
 
     useSceneStore.getState().redo();
     expect(useSceneStore.getState().history.present.primitives).toHaveLength(1);
+  });
+
+  it('adds a stroke with the active color and records a committed history step', () => {
+    useSceneStore.setState({ history: createHistoryState(buildInitialSnapshot()) });
+
+    useSceneStore.getState().setColor('#8e6ad8');
+    useSceneStore.getState().addStroke([
+      [0, 0, 0],
+      [1, 0.2, 0],
+    ]);
+
+    const nextHistory = useSceneStore.getState().history;
+    expect(nextHistory.present.strokes).toHaveLength(1);
+    expect(nextHistory.present.strokes[0]?.color).toBe('#8e6ad8');
+    expect(nextHistory.past).toHaveLength(1);
   });
 
   it('recolors a selected primitive and records history', () => {

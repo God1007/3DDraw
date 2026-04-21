@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { buildStrokeSegments } from '../features/strokes/buildStrokeSegments';
 import { createPrimitive } from '../features/primitives/createPrimitive';
 import { buildInitialSnapshot } from './defaultScene';
 import { createHistoryState, redoHistory, undoHistory, type HistoryState } from './history';
@@ -20,6 +21,7 @@ export interface SceneStoreState {
   setTransformMode: (mode: TransformMode) => void;
   selectEntity: (id: string | null) => void;
   addPrimitive: (kind: PrimitiveObject['type']) => void;
+  addStroke: (points: Vec3[]) => void;
   updateSelectionTransform: (
     id: string,
     transform: { position: Vec3; rotation: Vec3; scale: Vec3 },
@@ -190,6 +192,32 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
     });
   },
 
+  addStroke: (points) => {
+    set((state) => {
+      if (points.length < 2) {
+        return state;
+      }
+
+      const jitterSeed = Math.floor(Math.random() * 100000);
+      const stroke: CrayonStroke = {
+        id: crypto.randomUUID(),
+        color: state.history.present.activeColor,
+        points,
+        thickness: 0.18,
+        jitterSeed,
+        segmentData: buildStrokeSegments(points, 0.18, jitterSeed),
+      };
+
+      const snapshot: SceneSnapshot = {
+        ...state.history.present,
+        strokes: [...state.history.present.strokes, stroke],
+        selectionId: stroke.id,
+      };
+
+      return { history: commitHistory(state.history, snapshot) };
+    });
+  },
+
   updateSelectionTransform: (id, transform, commit = false) => {
     set((state) => {
       const { history } = state;
@@ -227,7 +255,7 @@ export const useSceneStore = create<SceneStoreState>((set) => ({
     set((state) => ({
       history: commit
         ? commitHistory(state.history, snapshot)
-        : syncCommittedBaseline({
+        : carryCommittedBaseline(state.history, {
             ...state.history,
             present: structuredClone(snapshot),
           }),
