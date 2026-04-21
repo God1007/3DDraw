@@ -12,21 +12,28 @@ export interface SceneCanvasHandle {
   getCanvas: () => HTMLCanvasElement | null;
 }
 
-function InteractionBinder() {
-  const interactions = useSceneInteractions();
+interface InteractionBinderProps {
+  onToolDragChange: (active: boolean) => void;
+}
+
+function InteractionBinder({ onToolDragChange }: InteractionBinderProps) {
+  const interactions = useSceneInteractions({ onToolDragChange });
   const { gl } = useThree();
 
   useEffect(() => {
     const dom = gl.domElement;
+    const options = { capture: true };
 
-    dom.addEventListener('pointerdown', interactions.onPointerDown);
-    dom.addEventListener('pointermove', interactions.onPointerMove);
-    dom.addEventListener('pointerup', interactions.onPointerUp);
+    dom.addEventListener('pointerdown', interactions.onPointerDown, options);
+    dom.addEventListener('pointermove', interactions.onPointerMove, options);
+    dom.addEventListener('pointerup', interactions.onPointerUp, options);
+    dom.addEventListener('pointercancel', interactions.onPointerUp, options);
 
     return () => {
-      dom.removeEventListener('pointerdown', interactions.onPointerDown);
-      dom.removeEventListener('pointermove', interactions.onPointerMove);
-      dom.removeEventListener('pointerup', interactions.onPointerUp);
+      dom.removeEventListener('pointerdown', interactions.onPointerDown, options);
+      dom.removeEventListener('pointermove', interactions.onPointerMove, options);
+      dom.removeEventListener('pointerup', interactions.onPointerUp, options);
+      dom.removeEventListener('pointercancel', interactions.onPointerUp, options);
     };
   }, [gl, interactions]);
 
@@ -39,6 +46,7 @@ export const SceneCanvas = forwardRef<SceneCanvasHandle>(function SceneCanvas(_,
   const updateSelectionTransform = useSceneStore((state) => state.updateSelectionTransform);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [orbitEnabled, setOrbitEnabled] = useState(true);
+  const [toolDragActive, setToolDragActive] = useState(false);
 
   useImperativeHandle(ref, () => ({
     getCanvas: () => canvasRef.current,
@@ -55,7 +63,7 @@ export const SceneCanvas = forwardRef<SceneCanvasHandle>(function SceneCanvas(_,
         }}
       >
         <color attach="background" args={['#f9eed7']} />
-        <InteractionBinder />
+        <InteractionBinder onToolDragChange={setToolDragActive} />
         <SceneEnvironment />
         {snapshot.primitives.map((primitive) => (
           <PrimitiveMesh
@@ -87,7 +95,7 @@ export const SceneCanvas = forwardRef<SceneCanvasHandle>(function SceneCanvas(_,
           <planeGeometry args={[80, 80]} />
           <meshBasicMaterial transparent opacity={0} />
         </mesh>
-        <OrbitControls makeDefault enabled={orbitEnabled} />
+        <OrbitControls makeDefault enabled={orbitEnabled && !toolDragActive} />
       </Canvas>
     </div>
   );

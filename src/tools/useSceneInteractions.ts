@@ -7,11 +7,15 @@ import { useSceneStore } from '../store/sceneStore';
 import { buildWorkingPlane } from './workingPlane';
 import type { Vec3 } from '../types/scene';
 
+interface SceneInteractionOptions {
+  onToolDragChange?: (active: boolean) => void;
+}
+
 function toVec3(point: Vector3): Vec3 {
   return [point.x, point.y, point.z];
 }
 
-export function useSceneInteractions() {
+export function useSceneInteractions({ onToolDragChange }: SceneInteractionOptions = {}) {
   const snapshot = useSceneStore((state) => state.history.present);
   const addStroke = useSceneStore((state) => state.addStroke);
   const replaceSnapshot = useSceneStore((state) => state.replaceSnapshot);
@@ -19,6 +23,10 @@ export function useSceneInteractions() {
   const raycaster = useMemo(() => new Raycaster(), []);
   const activePoints = useRef<Vector3[]>([]);
   const [cursorPoint, setCursorPoint] = useState<Vec3 | null>(null);
+
+  function setToolDragActive(active: boolean) {
+    onToolDragChange?.(active);
+  }
 
   function projectPointer(clientX: number, clientY: number) {
     const rect = gl.domElement.getBoundingClientRect();
@@ -42,6 +50,14 @@ export function useSceneInteractions() {
 
       const hit = projectPointer(event.clientX, event.clientY);
       activePoints.current = hit ? [hit.clone()] : [];
+
+      if (!hit) {
+        return;
+      }
+
+      setToolDragActive(true);
+      event.preventDefault();
+      event.stopImmediatePropagation();
     },
 
     onPointerMove(event: PointerEvent) {
@@ -98,6 +114,9 @@ export function useSceneInteractions() {
         return;
       }
 
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
       const last = activePoints.current[activePoints.current.length - 1];
       if (last && last.distanceTo(hit) > 0.12) {
         activePoints.current.push(hit.clone());
@@ -105,6 +124,10 @@ export function useSceneInteractions() {
     },
 
     onPointerUp() {
+      if (activePoints.current.length > 0) {
+        setToolDragActive(false);
+      }
+
       if (snapshot.activeTool === 'crayon' && activePoints.current.length >= 2) {
         addStroke(activePoints.current.map(toVec3));
       }
